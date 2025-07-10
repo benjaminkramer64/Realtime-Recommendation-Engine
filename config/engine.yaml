@@ -1,0 +1,266 @@
+# Real-time Recommendation Engine Configuration
+
+# Core Engine Settings
+engine:
+  max_latency_ms: 10              # Maximum allowed serving latency
+  target_throughput: 1000000      # Target requests per second
+  cache_size_gb: 32               # Cache size in GB
+  batch_size: 10000               # Batch size for processing
+  worker_threads: 16              # Number of worker threads
+  enable_real_time_updates: true  # Enable real-time learning
+  fallback_strategy: "popular_items"
+
+# Algorithm Configuration
+algorithms:
+  - name: "collaborative_filtering"
+    weight: 0.4
+    enabled: true
+    config:
+      embedding_dim: 128
+      learning_rate: 0.01
+      regularization: 0.01
+      num_epochs: 50
+      min_interactions: 5
+      
+  - name: "content_based"
+    weight: 0.3
+    enabled: true
+    config:
+      feature_dim: 256
+      min_similarity: 0.1
+      max_features: 10000
+      ngram_range: [1, 2]
+      
+  - name: "deep_learning"
+    weight: 0.3
+    enabled: true
+    config:
+      embedding_dim: 64
+      hidden_layers: [128, 64, 32]
+      dropout_rate: 0.2
+      learning_rate: 0.001
+      batch_size: 1024
+
+# Caching Configuration
+cache:
+  redis:
+    cluster_nodes:
+      - "localhost:6379"
+      # - "redis-1:6379"
+      # - "redis-2:6379"
+      # - "redis-3:6379"
+    password: null
+    db: 0
+    max_connections: 100
+    connection_pool_size: 20
+    
+  levels:
+    l1_ttl: 300       # L1 cache TTL (5 minutes)
+    l2_ttl: 3600      # L2 cache TTL (1 hour)
+    l3_ttl: 86400     # L3 cache TTL (24 hours)
+    
+  eviction:
+    policy: "lru"     # Eviction policy (lru, lfu, random)
+    max_memory_mb: 8192  # Maximum memory usage
+
+# Performance Tuning
+performance:
+  # Async Settings
+  max_concurrent_requests: 10000
+  request_timeout_ms: 50
+  connection_timeout_ms: 5000
+  
+  # Batching
+  enable_batching: true
+  batch_timeout_ms: 10
+  max_batch_size: 1000
+  
+  # Circuit Breaker
+  circuit_breaker:
+    failure_threshold: 50
+    recovery_timeout: 30
+    half_open_max_calls: 10
+
+# Storage Configuration
+storage:
+  feature_store:
+    type: "redis"  # redis, postgres, mongodb
+    connection_string: "redis://localhost:6379/1"
+    max_connections: 50
+    pool_size: 20
+    
+  model_store:
+    type: "filesystem"  # filesystem, s3, gcs
+    path: "./models"
+    versioning: true
+    compression: true
+    
+  candidate_store:
+    type: "redis"
+    connection_string: "redis://localhost:6379/2"
+    precompute_candidates: true
+    max_candidates_per_user: 10000
+
+# Monitoring Configuration
+monitoring:
+  metrics:
+    enabled: true
+    port: 9090
+    path: "/metrics"
+    
+  logging:
+    level: "INFO"
+    format: "json"
+    output: "stdout"
+    
+  tracing:
+    enabled: false
+    jaeger_endpoint: "http://localhost:14268/api/traces"
+    
+  alerting:
+    enabled: false
+    webhook_url: null
+    
+  health_check:
+    enabled: true
+    port: 8080
+    path: "/health"
+    interval_seconds: 30
+
+# A/B Testing Configuration
+ab_testing:
+  enabled: true
+  default_variant: "control"
+  traffic_allocation:
+    control: 0.7
+    experiment_a: 0.15
+    experiment_b: 0.15
+    
+  experiments:
+    - name: "algorithm_weights"
+      variants:
+        control:
+          collaborative_filtering: 0.4
+          content_based: 0.3
+          deep_learning: 0.3
+        experiment_a:
+          collaborative_filtering: 0.5
+          content_based: 0.25
+          deep_learning: 0.25
+        experiment_b:
+          collaborative_filtering: 0.3
+          content_based: 0.35
+          deep_learning: 0.35
+
+# Business Rules
+business_rules:
+  # Item Filtering
+  item_filters:
+    - name: "availability"
+      enabled: true
+      filter_unavailable: true
+      
+    - name: "quality"
+      enabled: true
+      min_quality_score: 0.7
+      
+    - name: "diversity"
+      enabled: true
+      max_same_category: 3
+      
+  # User Segmentation  
+  user_segments:
+    - name: "new_users"
+      criteria:
+        interaction_count: {"$lt": 5}
+      recommendations:
+        fallback_to_popular: true
+        boost_trending: 1.2
+        
+    - name: "power_users"
+      criteria:
+        interaction_count: {"$gt": 100}
+      recommendations:
+        enable_deep_learning: true
+        diversity_boost: 1.1
+
+# Real-time Processing
+real_time:
+  # Stream Processing
+  kafka:
+    brokers:
+      - "localhost:9092"
+      # - "kafka-1:9092"
+      # - "kafka-2:9092"
+    
+    topics:
+      user_interactions:
+        name: "user_interactions"
+        partitions: 32
+        replication_factor: 3
+        
+      item_updates:
+        name: "item_updates"
+        partitions: 16
+        replication_factor: 3
+        
+      recommendations:
+        name: "recommendations"
+        partitions: 16
+        replication_factor: 3
+    
+    consumer:
+      group_id: "recommendation_engine"
+      auto_offset_reset: "latest"
+      enable_auto_commit: true
+      max_poll_records: 1000
+      
+  # Feature Updates
+  feature_updates:
+    enabled: true
+    update_frequency: "realtime"  # realtime, batch, scheduled
+    batch_size: 1000
+    processing_delay_ms: 100
+
+# Model Training
+training:
+  # Offline Training
+  offline:
+    enabled: true
+    schedule: "0 2 * * *"  # Daily at 2 AM
+    data_lookback_days: 30
+    validation_split: 0.2
+    
+  # Online Learning
+  online:
+    enabled: true
+    update_frequency: "interaction"  # interaction, batch, time
+    learning_rate_decay: 0.95
+    mini_batch_size: 100
+    
+  # Model Validation
+  validation:
+    enabled: true
+    metrics: ["precision", "recall", "ndcg", "auc"]
+    min_performance_threshold: 0.7
+    rollback_on_failure: true
+
+# Security
+security:
+  # API Security
+  api:
+    enable_auth: false
+    rate_limiting:
+      enabled: true
+      max_requests_per_minute: 6000
+      
+  # Data Privacy
+  privacy:
+    enable_user_consent: true
+    data_retention_days: 365
+    anonymize_old_data: true
+    
+  # Encryption
+  encryption:
+    encrypt_at_rest: false
+    encrypt_in_transit: true 
